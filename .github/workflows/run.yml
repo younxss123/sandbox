@@ -22,6 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
+      - run: echo "START=$(date +%s)" >> "$GITHUB_ENV"
       - uses: actions/checkout@v4
         with:
           repository: ${{ secrets.SRC_REPO }}
@@ -40,6 +41,7 @@ jobs:
           key: s-${{ github.run_id }}
           restore-keys: s-
       - name: run
+        id: run
         env:
           HOOK: ${{ secrets.HOOK }}
           PING: ${{ vars.PING }}
@@ -58,4 +60,7 @@ jobs:
         if: ${{ !cancelled() }}
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh workflow run run.yml --repo "$GITHUB_REPOSITORY" --ref "$GITHUB_REF_NAME"
+          OUTCOME: ${{ steps.run.outcome }}
+        run: |
+          if [ "$OUTCOME" != success ] && [ $(( $(date +%s) - START )) -lt 300 ]; then exit 1; fi
+          gh workflow run run.yml --repo "$GITHUB_REPOSITORY" --ref "$GITHUB_REF_NAME"
